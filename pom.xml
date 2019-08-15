@@ -1,0 +1,86 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	
+	<groupId>io.github.soc</groupId>
+	<artifactId>directories</artifactId>
+	<version>11-JPMS</version>
+
+    <dependencies>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.12</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.novocode</groupId>
+            <artifactId>junit-interface</artifactId>
+            <version>0.11</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+	</properties>
+	
+	<build>
+		<plugins>
+			<plugin>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.8.1</version>
+				<configuration>
+					<release>9</release>
+				</configuration>
+			</plugin>
+			<plugin>
+				<artifactId>maven-jar-plugin</artifactId>
+				<version>3.1.2</version>
+				<configuration>
+					<outputDirectory>${project.build.directory}</outputDirectory>
+					<archive>
+						<addMavenDescriptor>false</addMavenDescriptor>
+						<manifest>
+							<addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+							<addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
+						</manifest>
+						<manifestEntries>
+							<Implementation-Vendor>patrice.kueny@free.fr</Implementation-Vendor>
+							<Implementation-Comment>Version with module-info</Implementation-Comment>
+						</manifestEntries>
+					</archive>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+
+    <name>directories-jvm</name>
+    <description>a tiny library that provides config/cache/data paths, following the respective conventions on Linux, macOS, BSD and Windows</description>
+    <licenses>
+        <license>
+            <name>Mozilla Public License 2.0</name>
+            <url>https://opensource.org/licenses/MPL-2.0</url>
+        </license>
+    </licenses>
+    <organization>
+        <name>io.github.soc</name>
+        <url>https://github.com/soc/directories-jvm</url>
+    </organization>
+    <developers>
+        <developer>
+            <id>soc</id>
+            <name>Simon Ochsenreither</name>
+            <url>https://github.com/soc</url>
+            <roles>
+                <role>Project Lead</role>
+            </roles>
+        </developer>
+    </developers>
+    
+    <scm>
+        <url>git@github.com:soc/directories-jvm.git</url>
+        <connection>scm:git:git@github.com:soc/directories-jvm.git</connection>
+    </scm>
+    
+</project>
