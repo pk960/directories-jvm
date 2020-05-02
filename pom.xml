@@ -4,7 +4,7 @@
 	
 	<groupId>io.github.soc</groupId>
 	<artifactId>directories</artifactId>
-	<version>11-JPMS</version>
+	<version>11-JPMS-20200502</version>
 
     <dependencies>
         <dependency>
