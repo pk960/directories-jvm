@@ -56,6 +56,7 @@
 	</build>
 
     <name>directories-jvm</name>
+    <url>https://github.com/soc/directories-jvm</url>
     <description>a tiny library that provides config/cache/data paths, following the respective conventions on Linux, macOS, BSD and Windows</description>
     <licenses>
         <license>
