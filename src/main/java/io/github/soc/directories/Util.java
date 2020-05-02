@@ -3,6 +3,7 @@ package io.github.soc.directories;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.lang.reflect.Method;
 import java.nio.charset.Charset;
 import java.util.Locale;
 
@@ -12,12 +13,14 @@ final class Util {
     throw new Error();
   }
 
+
   static final String operatingSystemName = System.getProperty("os.name");
   static final char operatingSystem;
   static final char LIN = 'l';
   static final char MAC = 'm';
   static final char WIN = 'w';
   static final char BSD = 'b';
+  static final char SOLARIS = 's';
 
   static {
     final String os = operatingSystemName.toLowerCase(Locale.ROOT);
@@ -29,9 +32,34 @@ final class Util {
       operatingSystem = WIN;
     else if (os.contains("bsd"))
       operatingSystem = BSD;
+    else if (os.contains("sunos"))
+      operatingSystem = SOLARIS;
     else
       throw new UnsupportedOperatingSystemException("directories are not supported on " + operatingSystemName);
   }
+
+  private static Object base64Encoder = null;
+  private static Method base64EncodeMethod = null;
+  // This string needs to end up being a multiple of 3 bytes after conversion to UTF-16. (It is currently 1200 bytes.)
+  // This is because Base64 converts 3 bytes to 4 letters; other numbers of bytes would introduce padding, which
+  // would make it harder to simply concatenate this precomputed string with whatever directories the user requests.
+  static final String SCRIPT_START_BASE64 = operatingSystem == 'w' ? toUTF16LEBase64("& {\n" +
+      "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8\n" +
+      "Add-Type @\"\n" +
+      "using System;\n" +
+      "using System.Runtime.InteropServices;\n" +
+      "public class Dir {\n" +
+      "  [DllImport(\"shell32.dll\")]\n" +
+      "  private static extern int SHGetKnownFolderPath([MarshalAs(UnmanagedType.LPStruct)] Guid rfid, uint dwFlags, IntPtr hToken, out IntPtr pszPath);\n" +
+      "  public static string GetKnownFolderPath(string rfid) {\n" +
+      "    IntPtr pszPath;\n" +
+      "    if (SHGetKnownFolderPath(new Guid(rfid), 0, IntPtr.Zero, out pszPath) != 0) return \"\";\n" +
+      "    string path = Marshal.PtrToStringUni(pszPath);\n" +
+      "    Marshal.FreeCoTaskMem(pszPath);\n" +
+      "    return path;\n" +
+      "  }\n" +
+      "}\n" +
+      "\"@\n") : null;
 
   static void requireNonNull(Object value) {
     if (value == null)
@@ -108,37 +136,48 @@ final class Util {
   }
 
   static String[] getWinDirs(String... guids) {
+
     int guidsLength = guids.length;
     StringBuilder buf = new StringBuilder(guidsLength * 68);
     for (int i = 0; i < guidsLength; i++) {
-      buf.append("[Dir]::GetKnownFolderPath(\\\"");
+      buf.append("[Dir]::GetKnownFolderPath(\"");
       buf.append(guids[i]);
-      buf.append("\\\")\n");
+      buf.append("\")\n");
     }
+
+    String encodedCommand = SCRIPT_START_BASE64 + toUTF16LEBase64(buf.toString() + "}");
 
     return runCommands(guidsLength, Charset.forName("UTF-8"),
         "powershell.exe",
-        "-Command",
-        "& {\n" +
-            "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8\n" +
-            "Add-Type @\\\"\n" +
-            "using System;\n" +
-            "using System.Runtime.InteropServices;\n" +
-            "public class Dir {\n" +
-            "   [DllImport(\\\"shell32.dll\\\")]\n" +
-            "   private static extern int SHGetKnownFolderPath([MarshalAs(UnmanagedType.LPStruct)] Guid rfid, uint dwFlags, IntPtr hToken, out IntPtr pszPath);\n" +
-            "   public static string GetKnownFolderPath(string rfid) {\n" +
-            "       IntPtr pszPath;\n" +
-            "       if (SHGetKnownFolderPath(new Guid(rfid), 0, IntPtr.Zero, out pszPath) != 0) return \\\"\\\";\n" +
-            "       string path = Marshal.PtrToStringUni(pszPath);\n" +
-            "       Marshal.FreeCoTaskMem(pszPath);\n" +
-            "       return path;\n" +
-            "   }\n" +
-            "}\n" +
-            "\\\"@\n" +
-            buf.toString() +
-            "}"
+        "-EncodedCommand",
+        encodedCommand
     );
+  }
+
+  private static String toUTF16LEBase64(String script) {
+    byte[] scriptInUtf16LEBytes = script.getBytes(Charset.forName("UTF-16LE"));
+    if (base64EncodeMethod == null) {
+      initBase64Encoding();
+    }
+    try {
+      return (String) base64EncodeMethod.invoke(base64Encoder, scriptInUtf16LEBytes);
+    } catch (Exception e) {
+      throw new RuntimeException("Base64 encoding failed!", e);
+    }
+  }
+
+  private static void initBase64Encoding() {
+    try {
+      base64Encoder = Class.forName("java.util.Base64").getMethod("getEncoder").invoke(null);
+      base64EncodeMethod = base64Encoder.getClass().getMethod("encodeToString", byte[].class);
+    } catch (Exception e1) {
+      try {
+        base64EncodeMethod = Class.forName("sun.misc.BASE64Encoder").getMethod("encode", byte[].class);
+      } catch (Exception e2) {
+        throw new RuntimeException(
+            "Could not find any viable Base64 encoder! (java.util.Base64 failed with: " + e1.getMessage() + ")", e2);
+      }
+    }
   }
 
   private static String[] runCommands(int expectedResultLines, Charset charset, String... commands) {
